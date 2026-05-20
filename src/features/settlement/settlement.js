@@ -2,7 +2,7 @@ export function calculateSettlement(rows, members) {
   const list = Array.isArray(rows) ? rows : [];
   const people = Array.isArray(members) ? members : [];
 
-  const total = list.reduce((sum, row) => sum + Number(row.amount || 0), 0);
+  const total = list.reduce((sum, row) => sum + toNumber(row.amount), 0);
   const sharePerPerson = people.length > 0 ? total / people.length : 0;
 
   const paidByUser = {};
@@ -12,7 +12,7 @@ export function calculateSettlement(rows, members) {
 
   for (const row of list) {
     if (!row.paidByUserId) continue;
-    paidByUser[row.paidByUserId] = (paidByUser[row.paidByUserId] || 0) + Number(row.amount || 0);
+    paidByUser[row.paidByUserId] = (paidByUser[row.paidByUserId] || 0) + toNumber(row.amount);
   }
 
   const balances = people.map((person) => {
@@ -52,4 +52,11 @@ export function calculateSettlement(rows, members) {
           amount: 0
         }
   };
+}
+
+function toNumber(value) {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+  if (!value) return 0;
+  const parsed = Number(String(value).replace(',', '.'));
+  return Number.isFinite(parsed) ? parsed : 0;
 }
