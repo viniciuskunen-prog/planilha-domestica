@@ -141,6 +141,36 @@ export async function deleteRow(rowId) {
   return { error: result.error };
 }
 
+export function subscribeToSheetRows(sheetId, callback) {
+  if (!supabase || !sheetId) return { unsubscribe: () => {} };
+
+  const channel = supabase
+    .channel(`sheet-rows-${sheetId}`)
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'expense_rows',
+        filter: `sheet_id=eq.${sheetId}`
+      },
+      (payload) => {
+        callback({
+          eventType: payload.eventType,
+          row: payload.new?.id ? mapRowFromDb(payload.new) : null,
+          oldRowId: payload.old?.id || null
+        });
+      }
+    )
+    .subscribe();
+
+  return {
+    unsubscribe: () => {
+      supabase.removeChannel(channel);
+    }
+  };
+}
+
 function mapRowFromDb(row) {
   return {
     id: row.id,
