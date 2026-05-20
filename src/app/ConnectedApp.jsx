@@ -51,6 +51,7 @@ function moneyInputValue(value) {
 export function ConnectedApp() {
   const auth = useAuth();
   const [selectedPeriod, setSelectedPeriod] = useState(getInitialPeriod);
+  const [expandedRowId, setExpandedRowId] = useState(null);
 
   const householdState = useHousehold(auth.user);
   const fallbackPaidByUserId = householdState.members[0]?.id || auth.user?.id || null;
@@ -89,16 +90,27 @@ export function ConnectedApp() {
   }
 
   function goToPreviousMonth() {
+    setExpandedRowId(null);
     setSelectedPeriod((current) => shiftPeriod(current, -1));
   }
 
   function goToNextMonth() {
+    setExpandedRowId(null);
     setSelectedPeriod((current) => shiftPeriod(current, 1));
   }
 
   function copySummary() {
     const text = buildSummaryText(settlement, selectedPeriod, members);
     navigator.clipboard?.writeText(text);
+  }
+
+  async function saveAndCollapse(rowId, field, value) {
+    await sheetState.saveRow(rowId, field, value);
+    setExpandedRowId(null);
+  }
+
+  function addMobileRow() {
+    sheetState.addRow();
   }
 
   return (
@@ -210,52 +222,69 @@ export function ConnectedApp() {
         </div>
 
         <div className="mobile-list">
-          {rows.map((row) => (
-            <article className="mobile-row" key={row.id}>
-              <div className="mobile-row-top">
-                <input
-                  className="description-input"
-                  value={row.description}
-                  onChange={(event) => sheetState.updateRow(row.id, 'description', event.target.value)}
-                  onBlur={(event) => sheetState.saveRow(row.id, 'description', event.target.value.trim())}
-                  placeholder="Descricao"
-                />
-                <button type="button" className="delete-button" onClick={() => sheetState.removeRow(row.id)} aria-label="Remover linha">
-                  <Trash2 size={17} />
-                </button>
-              </div>
+          {rows.map((row) => {
+            const isExpanded = expandedRowId === row.id || !row.description;
+            const payer = members.find((member) => member.id === row.paidByUserId);
 
-              <div className="mobile-row-grid">
-                <label>
-                  <span>Valor</span>
-                  <input
-                    value={moneyInputValue(row.amount)}
-                    inputMode="decimal"
-                    onChange={(event) => sheetState.updateRow(row.id, 'amount', event.target.value)}
-                    onBlur={(event) => sheetState.saveRow(row.id, 'amount', parseBRL(event.target.value))}
-                    placeholder="0,00"
-                  />
-                </label>
+            return (
+              <article className={`mobile-row ${isExpanded ? 'is-expanded' : 'is-collapsed'}`} key={row.id}>
+                {!isExpanded && (
+                  <button type="button" className="collapsed-row" onClick={() => setExpandedRowId(row.id)}>
+                    <span>{row.description || 'Sem descricao'}</span>
+                    <strong>{formatBRL(parseBRL(row.amount))}</strong>
+                    <em>{payer?.displayName || 'Sem pagador'}</em>
+                  </button>
+                )}
 
-                <div className="payer-toggle" aria-label="Pago por">
-                  {members.map((member) => (
-                    <button
-                      key={member.id}
-                      type="button"
-                      className={row.paidByUserId === member.id ? 'active' : ''}
-                      onClick={() => sheetState.updateAndSaveRow(row.id, 'paidByUserId', member.id)}
-                    >
-                      {member.displayName}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </article>
-          ))}
+                {isExpanded && (
+                  <>
+                    <div className="mobile-row-top">
+                      <input
+                        className="description-input"
+                        value={row.description}
+                        onChange={(event) => sheetState.updateRow(row.id, 'description', event.target.value)}
+                        onBlur={(event) => saveAndCollapse(row.id, 'description', event.target.value.trim())}
+                        placeholder="Descricao"
+                      />
+                      <button type="button" className="delete-button" onClick={() => sheetState.removeRow(row.id)} aria-label="Remover linha">
+                        <Trash2 size={17} />
+                      </button>
+                    </div>
+
+                    <div className="mobile-row-grid">
+                      <label>
+                        <span>Valor</span>
+                        <input
+                          value={moneyInputValue(row.amount)}
+                          inputMode="decimal"
+                          onChange={(event) => sheetState.updateRow(row.id, 'amount', event.target.value)}
+                          onBlur={(event) => saveAndCollapse(row.id, 'amount', parseBRL(event.target.value))}
+                          placeholder="0,00"
+                        />
+                      </label>
+
+                      <div className="payer-toggle" aria-label="Pago por">
+                        {members.map((member) => (
+                          <button
+                            key={member.id}
+                            type="button"
+                            className={row.paidByUserId === member.id ? 'active' : ''}
+                            onClick={() => sheetState.updateAndSaveRow(row.id, 'paidByUserId', member.id)}
+                          >
+                            {member.displayName}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </article>
+            );
+          })}
         </div>
       </section>
 
-      <button type="button" className="mobile-fab" onClick={sheetState.addRow} aria-label="Adicionar nova linha">
+      <button type="button" className="mobile-fab" onClick={addMobileRow} aria-label="Adicionar nova linha">
         <Plus size={22} />
       </button>
     </main>
