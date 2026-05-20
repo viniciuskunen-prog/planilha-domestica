@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Plus, Copy } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Copy, Plus } from 'lucide-react';
 import { formatBRL, parseBRL } from '../lib/money.js';
 import { calculateSettlement } from '../features/settlement/settlement.js';
 
@@ -7,6 +7,23 @@ const members = [
   { id: 'vini', displayName: 'Vini' },
   { id: 'eliane', displayName: 'Eliane' }
 ];
+
+const monthNames = [
+  'Janeiro',
+  'Fevereiro',
+  'Marco',
+  'Abril',
+  'Maio',
+  'Junho',
+  'Julho',
+  'Agosto',
+  'Setembro',
+  'Outubro',
+  'Novembro',
+  'Dezembro'
+];
+
+const initialPeriod = { year: 2026, month: 5 };
 
 const initialRows = [
   { id: '1', description: 'Agua', amount: 120, paidByUserId: 'eliane' },
@@ -16,32 +33,87 @@ const initialRows = [
   { id: '5', description: 'Escola Isis', amount: 1000, paidByUserId: 'eliane' }
 ];
 
+function getPeriodKey(period) {
+  return `${period.year}-${String(period.month).padStart(2, '0')}`;
+}
+
+function getPeriodLabel(period) {
+  return `${monthNames[period.month - 1]}/${period.year}`;
+}
+
+function shiftPeriod(period, offset) {
+  const date = new Date(period.year, period.month - 1 + offset, 1);
+  return {
+    year: date.getFullYear(),
+    month: date.getMonth() + 1
+  };
+}
+
+function cloneStructure(rows) {
+  return rows.map((row, index) => ({
+    id: crypto.randomUUID(),
+    description: row.description,
+    amount: 0,
+    paidByUserId: row.paidByUserId || members[0].id,
+    position: index
+  }));
+}
+
 export function App() {
-  const [rows, setRows] = useState(initialRows);
+  const [selectedPeriod, setSelectedPeriod] = useState(initialPeriod);
+  const [sheets, setSheets] = useState({
+    [getPeriodKey(initialPeriod)]: initialRows
+  });
+
+  const currentKey = getPeriodKey(selectedPeriod);
+  const rows = sheets[currentKey] || [];
+  const previousPeriod = shiftPeriod(selectedPeriod, -1);
+  const previousRows = sheets[getPeriodKey(previousPeriod)] || [];
   const settlement = useMemo(() => calculateSettlement(rows, members), [rows]);
 
+  function setCurrentRows(nextRows) {
+    setSheets((current) => ({
+      ...current,
+      [currentKey]: nextRows
+    }));
+  }
+
+  function goToPreviousMonth() {
+    setSelectedPeriod((current) => shiftPeriod(current, -1));
+  }
+
+  function goToNextMonth() {
+    setSelectedPeriod((current) => shiftPeriod(current, 1));
+  }
+
   function updateRow(id, field, value) {
-    setRows((current) => current.map((row) => row.id === id ? { ...row, [field]: value } : row));
+    setCurrentRows(rows.map((row) => row.id === id ? { ...row, [field]: value } : row));
   }
 
   function addRow() {
-    setRows((current) => [
-      ...current,
+    setCurrentRows([
+      ...rows,
       {
         id: crypto.randomUUID(),
         description: '',
         amount: 0,
-        paidByUserId: members[0].id
+        paidByUserId: members[0].id,
+        position: rows.length
       }
     ]);
   }
 
   function removeRow(id) {
-    setRows((current) => current.filter((row) => row.id !== id));
+    setCurrentRows(rows.filter((row) => row.id !== id));
+  }
+
+  function copyPreviousStructure() {
+    if (previousRows.length === 0) return;
+    setCurrentRows(cloneStructure(previousRows));
   }
 
   function copySummary() {
-    const text = buildSummaryText(settlement);
+    const text = buildSummaryText(settlement, selectedPeriod);
     navigator.clipboard?.writeText(text);
   }
 
@@ -50,10 +122,40 @@ export function App() {
       <header className="hero">
         <div>
           <p className="eyebrow">Casa Vini e Eliane</p>
-          <h1>Despesas de Maio/2026</h1>
+          <h1>Despesas de {getPeriodLabel(selectedPeriod)}</h1>
           <p className="muted">Tabela livre para lancar. Calculo fechado para acertar.</p>
         </div>
       </header>
+
+      <section className="month-card">
+        <button type="button" className="secondary-button" onClick={goToPreviousMonth}>
+          <ChevronLeft size={16} />
+          Mes anterior
+        </button>
+        <strong>{getPeriodLabel(selectedPeriod)}</strong>
+        <button type="button" className="secondary-button" onClick={goToNextMonth}>
+          Proximo mes
+          <ChevronRight size={16} />
+        </button>
+      </section>
+
+      {rows.length === 0 && (
+        <section className="empty-month-card">
+          <div>
+            <strong>{getPeriodLabel(selectedPeriod)} ainda esta vazio.</strong>
+            <p>Comece uma tabela nova ou copie apenas as descricoes do mes anterior com valores zerados.</p>
+          </div>
+          <div className="actions">
+            <button type="button" className="secondary-button" onClick={copyPreviousStructure} disabled={previousRows.length === 0}>
+              Copiar estrutura de {getPeriodLabel(previousPeriod)}
+            </button>
+            <button type="button" className="primary-button" onClick={addRow}>
+              <Plus size={16} />
+              Comecar vazio
+            </button>
+          </div>
+        </section>
+      )}
 
       <section className="summary-grid">
         <SummaryCard label="Total do mes" value={formatBRL(settlement.total)} />
@@ -133,10 +235,12 @@ function SummaryCard({ label, value }) {
   );
 }
 
-function buildSummaryText(settlement) {
+function buildSummaryText(settlement, period) {
+  const label = getPeriodLabel(period);
+
   if (settlement.settlement.amount <= 0) {
-    return `Resumo despesas Maio/2026\n\nTotal: ${formatBRL(settlement.total)}\nParte de cada um: ${formatBRL(settlement.sharePerPerson)}\n\nAcerto: ninguem deve nada.`;
+    return `Resumo despesas ${label}\n\nTotal: ${formatBRL(settlement.total)}\nParte de cada um: ${formatBRL(settlement.sharePerPerson)}\n\nAcerto: ninguem deve nada.`;
   }
 
-  return `Resumo despesas Maio/2026\n\nTotal: ${formatBRL(settlement.total)}\nParte de cada um: ${formatBRL(settlement.sharePerPerson)}\n\nVini pagou: ${formatBRL(settlement.paidByUser.vini)}\nEliane pagou: ${formatBRL(settlement.paidByUser.eliane)}\n\nAcerto:\n${settlement.settlement.fromDisplayName} transfere ${formatBRL(settlement.settlement.amount)} para ${settlement.settlement.toDisplayName}.`;
+  return `Resumo despesas ${label}\n\nTotal: ${formatBRL(settlement.total)}\nParte de cada um: ${formatBRL(settlement.sharePerPerson)}\n\nVini pagou: ${formatBRL(settlement.paidByUser.vini)}\nEliane pagou: ${formatBRL(settlement.paidByUser.eliane)}\n\nAcerto:\n${settlement.settlement.fromDisplayName} transfere ${formatBRL(settlement.settlement.amount)} para ${settlement.settlement.toDisplayName}.`;
 }
