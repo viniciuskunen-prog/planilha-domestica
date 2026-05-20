@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import {
   createRow as createRowOnServer,
+  createRows as createRowsOnServer,
   deleteRow as deleteRowOnServer,
+  fetchMonthlySheetRows,
   fetchOrCreateMonthlySheet,
   updateRow as updateRowOnServer
 } from './sheetService.js';
@@ -9,7 +11,9 @@ import {
 export function useMonthlySheet({ household, period, user, fallbackPaidByUserId }) {
   const [sheet, setSheet] = useState(null);
   const [rows, setRows] = useState([]);
+  const [previousRows, setPreviousRows] = useState([]);
   const [loading, setLoading] = useState(Boolean(household));
+  const [copyingStructure, setCopyingStructure] = useState(false);
   const [error, setError] = useState(null);
 
   useEffect(() => {
@@ -19,21 +23,32 @@ export function useMonthlySheet({ household, period, user, fallbackPaidByUserId 
       if (!household || !period) {
         setSheet(null);
         setRows([]);
+        setPreviousRows([]);
         setLoading(false);
         return;
       }
 
       setLoading(true);
+      setError(null);
+
       const result = await fetchOrCreateMonthlySheet({
         householdId: household.id,
         year: period.year,
         month: period.month
       });
 
+      const previousPeriod = shiftPeriod(period, -1);
+      const previousResult = await fetchMonthlySheetRows({
+        householdId: household.id,
+        year: previousPeriod.year,
+        month: previousPeriod.month
+      });
+
       if (!active) return;
       setSheet(result.sheet);
       setRows(result.rows || []);
-      setError(result.error || null);
+      setPreviousRows(previousResult.rows || []);
+      setError(result.error || previousResult.error || null);
       setLoading(false);
     }
 
@@ -76,7 +91,7 @@ export function useMonthlySheet({ household, period, user, fallbackPaidByUserId 
   }
 
   async function updateRow(rowId, field, value) {
-    const previousRows = rows;
+    const previousRowsSnapshot = rows;
     const patch = { [field]: value };
 
     setRows((current) => current.map((row) => row.id === rowId ? { ...row, ...patch } : row));
@@ -87,7 +102,7 @@ export function useMonthlySheet({ household, period, user, fallbackPaidByUserId 
 
     if (result.error) {
       setError(result.error);
-      setRows(previousRows);
+      setRows(previousRowsSnapshot);
       return;
     }
 
@@ -95,7 +110,7 @@ export function useMonthlySheet({ household, period, user, fallbackPaidByUserId 
   }
 
   async function removeRow(rowId) {
-    const previousRows = rows;
+    const previousRowsSnapshot = rows;
     setRows((current) => current.filter((row) => row.id !== rowId));
 
     if (String(rowId).startsWith('temp-')) return;
@@ -104,40 +119,55 @@ export function useMonthlySheet({ household, period, user, fallbackPaidByUserId 
 
     if (result.error) {
       setError(result.error);
-      setRows(previousRows);
+      setRows(previousRowsSnapshot);
     }
   }
 
-  async function replaceRowsFromStructure(sourceRows) {
-    if (!sheet || !user || !Array.isArray(sourceRows)) return;
+  async function copyPreviousStructure() {
+    if (!sheet || !user || previousRows.length === 0 || rows.length > 0) return;
 
-    for (const row of sourceRows) {
-      const result = await createRowOnServer({
-        sheetId: sheet.id,
-        description: row.description,
-        amount: 0,
-        paidByUserId: row.paidByUserId || fallbackPaidByUserId,
-        position: rows.length,
-        userId: user.id
-      });
+    setCopyingStructure(true);
+    setError(null);
 
-      if (result.error) {
-        setError(result.error);
-        return;
-      }
+    const rowsToCreate = previousRows.map((row, index) => ({
+      sheetId: sheet.id,
+      description: row.description,
+      amount: 0,
+      paidByUserId: row.paidByUserId || fallbackPaidByUserId,
+      position: index,
+      userId: user.id
+    }));
 
-      setRows((current) => [...current, result.row]);
+    const result = await createRowsOnServer(rowsToCreate);
+
+    if (result.error) {
+      setError(result.error);
+      setCopyingStructure(false);
+      return;
     }
+
+    setRows(result.rows || []);
+    setCopyingStructure(false);
   }
 
   return {
     sheet,
     rows,
+    previousRows,
     loading,
+    copyingStructure,
     error,
     addRow,
     updateRow,
     removeRow,
-    replaceRowsFromStructure
+    copyPreviousStructure
+  };
+}
+
+function shiftPeriod(period, offset) {
+  const date = new Date(period.year, period.month - 1 + offset, 1);
+  return {
+    year: date.getFullYear(),
+    month: date.getMonth() + 1
   };
 }
