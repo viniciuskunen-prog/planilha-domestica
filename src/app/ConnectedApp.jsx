@@ -68,6 +68,12 @@ function getMonthVariation(currentTotal, previousTotal) {
   };
 }
 
+function getSettlementText(settlement) {
+  if (settlement.settlement.amount <= 0) return 'Ninguem deve nada';
+
+  return `${settlement.settlement.fromDisplayName} deve ${formatBRL(settlement.settlement.amount)} para ${settlement.settlement.toDisplayName}`;
+}
+
 export function ConnectedApp() {
   const auth = useAuth();
   const [selectedPeriod, setSelectedPeriod] = useState(getInitialPeriod);
@@ -148,9 +154,9 @@ export function ConnectedApp() {
           <h1>{getPeriodLabel(selectedPeriod)}</h1>
           <p className="muted">Despesas compartilhadas com acerto automatico.</p>
         </div>
-        <button type="button" className="secondary-button signout-button" onClick={signOut}>
+        <button type="button" className="secondary-button signout-button" onClick={signOut} aria-label="Sair">
           <LogOut size={16} />
-          Sair
+          <span>Sair</span>
         </button>
       </header>
 
@@ -196,11 +202,7 @@ export function ConnectedApp() {
 
       <section className="settlement-card">
         <span>Acerto do mes</span>
-        <strong>
-          {settlement.settlement.amount > 0
-            ? `${settlement.settlement.fromDisplayName} transfere ${formatBRL(settlement.settlement.amount)} para ${settlement.settlement.toDisplayName}`
-            : 'Ninguem deve nada'}
-        </strong>
+        <strong>{getSettlementText(settlement)}</strong>
       </section>
 
       <section className="sheet-card">
@@ -404,5 +406,5 @@ function buildSummaryText(settlement, period, members) {
     return `Resumo despesas ${label}\n\nTotal: ${formatBRL(settlement.total)}\nParte de cada um: ${formatBRL(settlement.sharePerPerson)}\n\n${paidLines}\n\nAcerto: ninguem deve nada.`;
   }
 
-  return `Resumo despesas ${label}\n\nTotal: ${formatBRL(settlement.total)}\nParte de cada um: ${formatBRL(settlement.sharePerPerson)}\n\n${paidLines}\n\nAcerto:\n${settlement.settlement.fromDisplayName} transfere ${formatBRL(settlement.settlement.amount)} para ${settlement.settlement.toDisplayName}.`;
+  return `Resumo despesas ${label}\n\nTotal: ${formatBRL(settlement.total)}\nParte de cada um: ${formatBRL(settlement.sharePerPerson)}\n\n${paidLines}\n\nAcerto:\n${settlement.settlement.fromDisplayName} deve ${formatBRL(settlement.settlement.amount)} para ${settlement.settlement.toDisplayName}.`;
 }
