@@ -59,6 +59,8 @@ export function ConnectedApp() {
 
   const rows = sheetState.rows || [];
   const members = householdState.members || [];
+  const previousPeriod = shiftPeriod(selectedPeriod, -1);
+  const canCopyPreviousStructure = rows.length === 0 && sheetState.previousRows.length > 0 && !sheetState.copyingStructure;
   const settlement = useMemo(() => calculateSettlement(rows, members), [rows, members]);
 
   if (auth.loading) {
@@ -119,15 +121,19 @@ export function ConnectedApp() {
       </section>
 
       {sheetState.loading && <LoadingInline text="Carregando mes..." />}
+      {sheetState.copyingStructure && <LoadingInline text="Copiando estrutura..." />}
       {sheetState.error && <ErrorInline text={sheetState.error.message} />}
 
       {rows.length === 0 && !sheetState.loading && (
         <section className="empty-month-card">
           <div>
             <strong>{getPeriodLabel(selectedPeriod)} esta vazio.</strong>
-            <p>Comece com uma linha nova. A copia do mes anterior entra no proximo ajuste conectado.</p>
+            <p>Copie a estrutura de {getPeriodLabel(previousPeriod)} com valores zerados ou comece do zero.</p>
           </div>
           <div className="actions">
+            <button type="button" className="secondary-button" onClick={sheetState.copyPreviousStructure} disabled={!canCopyPreviousStructure}>
+              Copiar {getPeriodLabel(previousPeriod)}
+            </button>
             <button type="button" className="primary-button" onClick={sheetState.addRow}>
               <Plus size={16} />
               Comecar vazio
