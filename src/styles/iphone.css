@@ -13,6 +13,21 @@
     margin-bottom: 14px;
   }
 
+  .hero-greeting {
+    margin: 0 0 2px;
+    color: #4b5563;
+    font-size: 1.18rem;
+    line-height: 1.15;
+    letter-spacing: -0.03em;
+  }
+
+  .hero-emoji {
+    display: inline-block;
+    margin-left: 4px;
+    font-size: 0.72em;
+    vertical-align: 0.05em;
+  }
+
   .signout-button {
     flex: 0 0 auto;
     min-height: 40px;
@@ -30,13 +45,13 @@
   }
 
   .eyebrow {
-    margin-bottom: 6px;
+    margin-bottom: 12px;
     font-size: 0.72rem;
   }
 
   h1 {
     margin-bottom: 6px;
-    font-size: clamp(2rem, 13vw, 3rem);
+    font-size: clamp(2rem, 12vw, 2.85rem);
     line-height: 0.94;
   }
 
