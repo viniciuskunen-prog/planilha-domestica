@@ -35,6 +35,29 @@ export async function fetchOrCreateMonthlySheet({ householdId, year, month }) {
   };
 }
 
+export async function fetchMonthlySheetRows({ householdId, year, month }) {
+  if (!supabase) return { sheet: null, rows: [], error: new Error('Supabase nao configurado') };
+
+  const found = await supabase
+    .from('monthly_sheets')
+    .select('*')
+    .eq('household_id', householdId)
+    .eq('year', year)
+    .eq('month', month)
+    .maybeSingle();
+
+  if (found.error) return { sheet: null, rows: [], error: found.error };
+  if (!found.data) return { sheet: null, rows: [], error: null };
+
+  const rowsResult = await fetchRows(found.data.id);
+
+  return {
+    sheet: found.data,
+    rows: rowsResult.rows,
+    error: rowsResult.error
+  };
+}
+
 export async function fetchRows(sheetId) {
   if (!supabase) return { rows: [], error: new Error('Supabase nao configurado') };
 
@@ -69,6 +92,21 @@ export async function createRow({ sheetId, description = '', amount = 0, paidByU
 
   return {
     row: result.data ? mapRowFromDb(result.data) : null,
+    error: result.error
+  };
+}
+
+export async function createRows(rows) {
+  if (!supabase) return { rows: [], error: new Error('Supabase nao configurado') };
+  if (!Array.isArray(rows) || rows.length === 0) return { rows: [], error: null };
+
+  const result = await supabase
+    .from('expense_rows')
+    .insert(rows.map(mapRowToDb))
+    .select('*');
+
+  return {
+    rows: (result.data || []).map(mapRowFromDb),
     error: result.error
   };
 }
@@ -110,6 +148,18 @@ function mapRowFromDb(row) {
     amount: Number(row.amount || 0),
     paidByUserId: row.paid_by_user_id,
     position: row.position
+  };
+}
+
+function mapRowToDb(row) {
+  return {
+    sheet_id: row.sheetId,
+    description: row.description,
+    amount: row.amount,
+    paid_by_user_id: row.paidByUserId,
+    position: row.position,
+    created_by_user_id: row.userId,
+    updated_by_user_id: row.userId
   };
 }
 
