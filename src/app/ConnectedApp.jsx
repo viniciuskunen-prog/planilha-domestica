@@ -175,8 +175,7 @@ export function ConnectedApp() {
       <header className="hero app-hero-with-action">
         <div>
           <p className="eyebrow">Rateio de contas conjuntas</p>
-          <p className="hero-greeting">{getGreeting()},</p>
-          <h1>{userFirstName}! <span className="hero-emoji" aria-hidden="true">{getGreetingEmoji()}</span></h1>
+          <h1 className="hero-title">{getGreeting()}, {userFirstName}! <span className="hero-emoji" aria-hidden="true">{getGreetingEmoji()}</span></h1>
           <p className="muted">Registre aqui as despesas pagas por voce</p>
         </div>
         <button type="button" className="secondary-button signout-button" onClick={signOut} aria-label="Sair">
