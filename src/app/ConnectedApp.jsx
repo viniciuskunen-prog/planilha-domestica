@@ -80,7 +80,8 @@ export function ConnectedApp() {
     household: householdState.household,
     period: selectedPeriod,
     user: auth.user,
-    fallbackPaidByUserId
+    fallbackPaidByUserId,
+    editingRowId: expandedRowId
   });
 
   const rows = sheetState.rows || [];
