@@ -25,7 +25,7 @@ export function LoginPage() {
     }
 
     if (mode === 'sign-up') {
-      setStatus('Cadastro criado. Se o Supabase pedir confirmacao de email, confirme antes de entrar.');
+      setStatus('Cadastro criado. Se o Supabase pedir confirmação de email, confirme antes de entrar.');
     }
 
     setLoading(false);
@@ -34,9 +34,9 @@ export function LoginPage() {
   return (
     <main className="login-shell">
       <section className="login-card">
-        <p className="eyebrow">Planilha Domestica</p>
+        <p className="eyebrow">Planilha Doméstica</p>
         <h1>Entrar no rateio</h1>
-        <p className="muted">Acesse o espaco compartilhado da casa.</p>
+        <p className="muted">Acesse o espaço compartilhado da casa.</p>
 
         <form className="login-form" onSubmit={handleSubmit}>
           {mode === 'sign-up' && (
@@ -64,7 +64,7 @@ export function LoginPage() {
         </form>
 
         <button type="button" className="text-button" onClick={() => setMode(mode === 'sign-in' ? 'sign-up' : 'sign-in')}>
-          {mode === 'sign-in' ? 'Criar novo acesso' : 'Ja tenho acesso'}
+          {mode === 'sign-in' ? 'Criar novo acesso' : 'Já tenho acesso'}
         </button>
       </section>
     </main>
