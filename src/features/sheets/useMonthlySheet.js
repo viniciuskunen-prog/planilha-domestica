@@ -5,10 +5,11 @@ import {
   deleteRow as deleteRowOnServer,
   fetchMonthlySheetRows,
   fetchOrCreateMonthlySheet,
+  subscribeToSheetRows,
   updateRow as updateRowOnServer
 } from './sheetService.js';
 
-export function useMonthlySheet({ household, period, user, fallbackPaidByUserId }) {
+export function useMonthlySheet({ household, period, user, fallbackPaidByUserId, editingRowId }) {
   const [sheet, setSheet] = useState(null);
   const [rows, setRows] = useState([]);
   const [previousRows, setPreviousRows] = useState([]);
@@ -58,6 +59,34 @@ export function useMonthlySheet({ household, period, user, fallbackPaidByUserId 
       active = false;
     };
   }, [household, period]);
+
+  useEffect(() => {
+    if (!sheet?.id) return undefined;
+
+    const subscription = subscribeToSheetRows(sheet.id, (change) => {
+      if (change.eventType === 'DELETE') {
+        setRows((current) => current.filter((row) => row.id !== change.oldRowId));
+        return;
+      }
+
+      if (!change.row) return;
+
+      setRows((current) => {
+        if (editingRowId === change.row.id) return current;
+
+        const exists = current.some((row) => row.id === change.row.id);
+        const nextRows = exists
+          ? current.map((row) => row.id === change.row.id ? change.row : row)
+          : [...current, change.row];
+
+        return nextRows.sort((a, b) => Number(a.position || 0) - Number(b.position || 0));
+      });
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [sheet?.id, editingRowId]);
 
   async function addRow() {
     if (!sheet || !user) return null;
