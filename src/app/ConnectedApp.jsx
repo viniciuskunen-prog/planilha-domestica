@@ -48,6 +48,22 @@ function moneyInputValue(value) {
   return String(value).replace('.', ',');
 }
 
+function getGreeting() {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Bom dia';
+  if (hour < 18) return 'Boa tarde';
+  return 'Boa noite';
+}
+
+function getUserFirstName(user, members) {
+  const profileName = members.find((member) => member.id === user?.id)?.displayName;
+  const metadataName = user?.user_metadata?.display_name || user?.user_metadata?.name;
+  const emailName = user?.email?.split('@')[0];
+  const name = profileName || metadataName || emailName || 'usuario';
+
+  return String(name).split(' ')[0];
+}
+
 function getMonthVariation(currentTotal, previousTotal) {
   if (!previousTotal || previousTotal <= 0) return null;
 
@@ -92,6 +108,7 @@ export function ConnectedApp() {
 
   const rows = sheetState.rows || [];
   const members = householdState.members || [];
+  const userFirstName = getUserFirstName(auth.user, members);
   const previousPeriod = shiftPeriod(selectedPeriod, -1);
   const canCopyPreviousStructure = rows.length === 0 && sheetState.previousRows.length > 0 && !sheetState.copyingStructure;
   const settlement = useMemo(() => calculateSettlement(rows, members), [rows, members]);
@@ -150,9 +167,9 @@ export function ConnectedApp() {
     <main className="app-shell">
       <header className="hero app-hero-with-action">
         <div>
-          <p className="eyebrow">{householdState.household.name}</p>
-          <h1>{getPeriodLabel(selectedPeriod)}</h1>
-          <p className="muted">Despesas compartilhadas com acerto automatico.</p>
+          <p className="eyebrow">Rateio de contas conjuntas</p>
+          <h1>{getGreeting()}, {userFirstName}</h1>
+          <p className="muted">Registre aqui as despesas pagas por voce</p>
         </div>
         <button type="button" className="secondary-button signout-button" onClick={signOut} aria-label="Sair">
           <LogOut size={16} />
