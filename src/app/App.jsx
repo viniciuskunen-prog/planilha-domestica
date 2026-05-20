@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight, Copy, Plus } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Copy, Plus, Trash2 } from 'lucide-react';
 import { formatBRL, parseBRL } from '../lib/money.js';
 import { calculateSettlement } from '../features/settlement/settlement.js';
 
@@ -122,32 +122,30 @@ export function App() {
       <header className="hero">
         <div>
           <p className="eyebrow">Casa Vini e Eliane</p>
-          <h1>Despesas de {getPeriodLabel(selectedPeriod)}</h1>
-          <p className="muted">Tabela livre para lancar. Calculo fechado para acertar.</p>
+          <h1>{getPeriodLabel(selectedPeriod)}</h1>
+          <p className="muted">Despesas compartilhadas com acerto automatico.</p>
         </div>
       </header>
 
-      <section className="month-card">
-        <button type="button" className="secondary-button" onClick={goToPreviousMonth}>
-          <ChevronLeft size={16} />
-          Mes anterior
+      <section className="month-card" aria-label="Seletor de mes">
+        <button type="button" className="icon-button" onClick={goToPreviousMonth} aria-label="Mes anterior">
+          <ChevronLeft size={20} />
         </button>
         <strong>{getPeriodLabel(selectedPeriod)}</strong>
-        <button type="button" className="secondary-button" onClick={goToNextMonth}>
-          Proximo mes
-          <ChevronRight size={16} />
+        <button type="button" className="icon-button" onClick={goToNextMonth} aria-label="Proximo mes">
+          <ChevronRight size={20} />
         </button>
       </section>
 
       {rows.length === 0 && (
         <section className="empty-month-card">
           <div>
-            <strong>{getPeriodLabel(selectedPeriod)} ainda esta vazio.</strong>
-            <p>Comece uma tabela nova ou copie apenas as descricoes do mes anterior com valores zerados.</p>
+            <strong>{getPeriodLabel(selectedPeriod)} esta vazio.</strong>
+            <p>Copie a estrutura anterior com valores zerados ou comece do zero.</p>
           </div>
           <div className="actions">
             <button type="button" className="secondary-button" onClick={copyPreviousStructure} disabled={previousRows.length === 0}>
-              Copiar estrutura de {getPeriodLabel(previousPeriod)}
+              Copiar {getPeriodLabel(previousPeriod)}
             </button>
             <button type="button" className="primary-button" onClick={addRow}>
               <Plus size={16} />
@@ -157,11 +155,11 @@ export function App() {
         </section>
       )}
 
-      <section className="summary-grid">
-        <SummaryCard label="Total do mes" value={formatBRL(settlement.total)} />
-        <SummaryCard label="Parte de cada um" value={formatBRL(settlement.sharePerPerson)} />
-        <SummaryCard label="Vini pagou" value={formatBRL(settlement.paidByUser.vini)} />
-        <SummaryCard label="Eliane pagou" value={formatBRL(settlement.paidByUser.eliane)} />
+      <section className="summary-grid compact-summary">
+        <SummaryCard label="Total" value={formatBRL(settlement.total)} />
+        <SummaryCard label="Metade" value={formatBRL(settlement.sharePerPerson)} />
+        <SummaryCard label="Vini" value={formatBRL(settlement.paidByUser.vini)} />
+        <SummaryCard label="Eliane" value={formatBRL(settlement.paidByUser.eliane)} />
       </section>
 
       <section className="settlement-card">
@@ -175,13 +173,13 @@ export function App() {
 
       <section className="sheet-card">
         <div className="sheet-header">
-          <h2>Tabela de rateio</h2>
-          <div className="actions">
+          <h2>Rateio</h2>
+          <div className="actions sheet-actions">
             <button type="button" className="secondary-button" onClick={copySummary}>
               <Copy size={16} />
-              Copiar resumo
+              Copiar
             </button>
-            <button type="button" className="primary-button" onClick={addRow}>
+            <button type="button" className="primary-button desktop-add-button" onClick={addRow}>
               <Plus size={16} />
               Nova linha
             </button>
@@ -210,18 +208,40 @@ export function App() {
         <div className="mobile-list">
           {rows.map((row) => (
             <article className="mobile-row" key={row.id}>
-              <input value={row.description} onChange={(event) => updateRow(row.id, 'description', event.target.value)} placeholder="Descricao" />
-              <div className="mobile-row-grid">
-                <input value={row.amount ? String(row.amount).replace('.', ',') : ''} inputMode="decimal" onChange={(event) => updateRow(row.id, 'amount', parseBRL(event.target.value))} placeholder="0,00" />
-                <select value={row.paidByUserId} onChange={(event) => updateRow(row.id, 'paidByUserId', event.target.value)}>
-                  {members.map((member) => <option key={member.id} value={member.id}>{member.displayName}</option>)}
-                </select>
+              <div className="mobile-row-top">
+                <input className="description-input" value={row.description} onChange={(event) => updateRow(row.id, 'description', event.target.value)} placeholder="Descricao" />
+                <button type="button" className="delete-button" onClick={() => removeRow(row.id)} aria-label="Remover linha">
+                  <Trash2 size={17} />
+                </button>
               </div>
-              <button type="button" className="ghost-button" onClick={() => removeRow(row.id)}>Remover</button>
+
+              <div className="mobile-row-grid">
+                <label>
+                  <span>Valor</span>
+                  <input value={row.amount ? String(row.amount).replace('.', ',') : ''} inputMode="decimal" onChange={(event) => updateRow(row.id, 'amount', parseBRL(event.target.value))} placeholder="0,00" />
+                </label>
+
+                <div className="payer-toggle" aria-label="Pago por">
+                  {members.map((member) => (
+                    <button
+                      key={member.id}
+                      type="button"
+                      className={row.paidByUserId === member.id ? 'active' : ''}
+                      onClick={() => updateRow(row.id, 'paidByUserId', member.id)}
+                    >
+                      {member.displayName}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </article>
           ))}
         </div>
       </section>
+
+      <button type="button" className="mobile-fab" onClick={addRow} aria-label="Adicionar nova linha">
+        <Plus size={22} />
+      </button>
     </main>
   );
 }
