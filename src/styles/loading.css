@@ -1,0 +1,118 @@
+.loading-screen {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background:
+    radial-gradient(circle at top left, rgba(17, 24, 39, 0.10), transparent 34%),
+    #f8fafc;
+}
+
+.loading-card {
+  width: min(440px, 100%);
+  padding: 24px;
+  border: 1px solid #e5e7eb;
+  border-radius: 30px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.10);
+}
+
+.loading-mark {
+  width: 46px;
+  height: 46px;
+  margin-bottom: 18px;
+  border-radius: 18px;
+  background: #111827;
+  position: relative;
+  overflow: hidden;
+}
+
+.loading-mark::after {
+  content: '';
+  position: absolute;
+  inset: 10px;
+  border-radius: 999px;
+  border: 3px solid rgba(255, 255, 255, 0.35);
+  border-top-color: #ffffff;
+  animation: spin 0.8s linear infinite;
+}
+
+.loading-card h1 {
+  margin-bottom: 8px;
+  font-size: clamp(1.8rem, 7vw, 2.7rem);
+}
+
+.loading-card .muted {
+  margin-bottom: 18px;
+}
+
+.loading-skeleton {
+  display: grid;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.loading-line {
+  height: 14px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #e5e7eb, #f9fafb, #e5e7eb);
+  background-size: 220% 100%;
+  animation: shimmer 1.2s ease-in-out infinite;
+}
+
+.loading-line.short {
+  width: 62%;
+}
+
+.loading-line.medium {
+  width: 82%;
+}
+
+.inline-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 12px;
+  padding: 12px 14px;
+  border-radius: 999px;
+  color: #374151;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 10px 25px rgba(15, 23, 42, 0.05);
+  font-weight: 750;
+}
+
+.inline-status::before {
+  content: '';
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  border: 2px solid #d1d5db;
+  border-top-color: #111827;
+  animation: spin 0.8s linear infinite;
+}
+
+.inline-status.error {
+  color: #991b1b;
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+
+.inline-status.error::before {
+  display: none;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 220% 0;
+  }
+  100% {
+    background-position: -220% 0;
+  }
+}
