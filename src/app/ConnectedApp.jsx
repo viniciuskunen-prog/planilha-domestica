@@ -55,6 +55,13 @@ function getGreeting() {
   return 'Boa noite';
 }
 
+function getGreetingEmoji() {
+  const hour = new Date().getHours();
+  if (hour < 12) return '☀️';
+  if (hour < 18) return '🌤️';
+  return '🌙';
+}
+
 function getUserFirstName(user, members) {
   const profileName = members.find((member) => member.id === user?.id)?.displayName;
   const metadataName = user?.user_metadata?.display_name || user?.user_metadata?.name;
@@ -168,7 +175,8 @@ export function ConnectedApp() {
       <header className="hero app-hero-with-action">
         <div>
           <p className="eyebrow">Rateio de contas conjuntas</p>
-          <h1>{getGreeting()}, {userFirstName}</h1>
+          <p className="hero-greeting">{getGreeting()},</p>
+          <h1>{userFirstName}! <span className="hero-emoji" aria-hidden="true">{getGreetingEmoji()}</span></h1>
           <p className="muted">Registre aqui as despesas pagas por voce</p>
         </div>
         <button type="button" className="secondary-button signout-button" onClick={signOut} aria-label="Sair">
