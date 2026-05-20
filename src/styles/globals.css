@@ -101,9 +101,44 @@ h2 {
   font-weight: 700;
 }
 
+.summary-value-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
 .summary-card strong {
   font-size: 1.5rem;
   letter-spacing: -0.04em;
+  white-space: nowrap;
+}
+
+.month-variation {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 24px;
+  border-radius: 999px;
+  padding: 0 8px;
+  font-size: 0.76rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.month-variation.up {
+  color: #991b1b;
+  background: #fee2e2;
+}
+
+.month-variation.down {
+  color: #166534;
+  background: #dcfce7;
+}
+
+.month-variation.flat {
+  color: #4b5563;
+  background: #f3f4f6;
 }
 
 .settlement-card {
@@ -263,6 +298,20 @@ select:focus {
 
   .summary-card {
     padding: 16px;
+  }
+
+  .summary-value-row {
+    justify-content: space-between;
+  }
+
+  .summary-card strong {
+    font-size: 1.22rem;
+  }
+
+  .month-variation {
+    min-height: 22px;
+    padding: 0 7px;
+    font-size: 0.7rem;
   }
 
   .mobile-row-grid {
