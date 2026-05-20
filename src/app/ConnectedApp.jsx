@@ -48,6 +48,26 @@ function moneyInputValue(value) {
   return String(value).replace('.', ',');
 }
 
+function getMonthVariation(currentTotal, previousTotal) {
+  if (!previousTotal || previousTotal <= 0) return null;
+
+  const percent = ((currentTotal - previousTotal) / previousTotal) * 100;
+
+  if (Math.abs(percent) < 0.1) {
+    return {
+      direction: 'flat',
+      label: '0%',
+      title: 'Igual ao mes anterior'
+    };
+  }
+
+  return {
+    direction: percent > 0 ? 'up' : 'down',
+    label: `${Math.abs(percent).toFixed(0)}%`,
+    title: percent > 0 ? 'Acima do mes anterior' : 'Abaixo do mes anterior'
+  };
+}
+
 export function ConnectedApp() {
   const auth = useAuth();
   const [selectedPeriod, setSelectedPeriod] = useState(getInitialPeriod);
@@ -68,6 +88,8 @@ export function ConnectedApp() {
   const previousPeriod = shiftPeriod(selectedPeriod, -1);
   const canCopyPreviousStructure = rows.length === 0 && sheetState.previousRows.length > 0 && !sheetState.copyingStructure;
   const settlement = useMemo(() => calculateSettlement(rows, members), [rows, members]);
+  const previousSettlement = useMemo(() => calculateSettlement(sheetState.previousRows || [], members), [sheetState.previousRows, members]);
+  const monthVariation = getMonthVariation(settlement.total, previousSettlement.total);
 
   if (auth.loading) {
     return <LoadingScreen text="Carregando sessao" description="Validando seu acesso e preparando o app." />;
@@ -160,7 +182,7 @@ export function ConnectedApp() {
       )}
 
       <section className="summary-grid compact-summary">
-        <SummaryCard label="Total" value={formatBRL(settlement.total)} />
+        <SummaryCard label="Total" value={formatBRL(settlement.total)} variation={monthVariation} />
         <SummaryCard label="Metade" value={formatBRL(settlement.sharePerPerson)} />
         {members.map((member) => (
           <SummaryCard key={member.id} label={member.displayName} value={formatBRL(settlement.paidByUser[member.id])} />
@@ -291,12 +313,25 @@ export function ConnectedApp() {
   );
 }
 
-function SummaryCard({ label, value }) {
+function SummaryCard({ label, value, variation }) {
   return (
     <article className="summary-card">
       <span>{label}</span>
-      <strong>{value}</strong>
+      <div className="summary-value-row">
+        <strong>{value}</strong>
+        {variation && <MonthVariationBadge variation={variation} />}
+      </div>
     </article>
+  );
+}
+
+function MonthVariationBadge({ variation }) {
+  const symbol = variation.direction === 'up' ? '↗' : variation.direction === 'down' ? '↘' : '—';
+
+  return (
+    <span className={`month-variation ${variation.direction}`} title={variation.title}>
+      {symbol} {variation.label}
+    </span>
   );
 }
 
