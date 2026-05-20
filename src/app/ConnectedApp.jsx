@@ -11,7 +11,7 @@ import { formatBRL, parseBRL } from '../lib/money.js';
 const monthNames = [
   'Janeiro',
   'Fevereiro',
-  'Marco',
+  'Março',
   'Abril',
   'Maio',
   'Junho',
@@ -66,7 +66,7 @@ function getUserFirstName(user, members) {
   const profileName = members.find((member) => member.id === user?.id)?.displayName;
   const metadataName = user?.user_metadata?.display_name || user?.user_metadata?.name;
   const emailName = user?.email?.split('@')[0];
-  const name = profileName || metadataName || emailName || 'usuario';
+  const name = profileName || metadataName || emailName || 'usuário';
 
   return String(name).split(' ')[0];
 }
@@ -80,19 +80,19 @@ function getMonthVariation(currentTotal, previousTotal) {
     return {
       direction: 'flat',
       label: '0%',
-      title: 'Igual ao mes anterior'
+      title: 'Igual ao mês anterior'
     };
   }
 
   return {
     direction: percent > 0 ? 'up' : 'down',
     label: `${Math.abs(percent).toFixed(0)}%`,
-    title: percent > 0 ? 'Acima do mes anterior' : 'Abaixo do mes anterior'
+    title: percent > 0 ? 'Acima do mês anterior' : 'Abaixo do mês anterior'
   };
 }
 
 function getSettlementText(settlement) {
-  if (settlement.settlement.amount <= 0) return 'Ninguem deve nada';
+  if (settlement.settlement.amount <= 0) return 'Ninguém deve nada';
 
   return `${settlement.settlement.fromDisplayName} deve ${formatBRL(settlement.settlement.amount)} para ${settlement.settlement.toDisplayName}`;
 }
@@ -123,7 +123,7 @@ export function ConnectedApp() {
   const monthVariation = getMonthVariation(settlement.total, previousSettlement.total);
 
   if (auth.loading) {
-    return <LoadingScreen text="Carregando sessao" description="Validando seu acesso e preparando o app." />;
+    return <LoadingScreen text="Carregando sessão" description="Validando seu acesso e preparando o app." />;
   }
 
   if (!auth.isConfigured) {
@@ -135,7 +135,7 @@ export function ConnectedApp() {
   }
 
   if (householdState.loading) {
-    return <LoadingScreen text="Carregando casa" description="Buscando o espaco compartilhado e os membros." />;
+    return <LoadingScreen text="Carregando casa" description="Buscando o espaço compartilhado e os membros." />;
   }
 
   if (!householdState.household) {
@@ -176,7 +176,7 @@ export function ConnectedApp() {
         <div>
           <p className="eyebrow">Rateio de contas conjuntas</p>
           <h1 className="hero-title">{getGreeting()}, {userFirstName}! <span className="hero-emoji" aria-hidden="true">{getGreetingEmoji()}</span></h1>
-          <p className="muted">Registre aqui as despesas pagas por voce</p>
+          <p className="muted">Registre aqui as despesas pagas por você</p>
         </div>
         <button type="button" className="secondary-button signout-button" onClick={signOut} aria-label="Sair">
           <LogOut size={16} />
@@ -184,24 +184,24 @@ export function ConnectedApp() {
         </button>
       </header>
 
-      <section className="month-card" aria-label="Seletor de mes">
-        <button type="button" className="icon-button" onClick={goToPreviousMonth} aria-label="Mes anterior">
+      <section className="month-card" aria-label="Seletor de mês">
+        <button type="button" className="icon-button" onClick={goToPreviousMonth} aria-label="Mês anterior">
           <ChevronLeft size={20} />
         </button>
         <strong>{getPeriodLabel(selectedPeriod)}</strong>
-        <button type="button" className="icon-button" onClick={goToNextMonth} aria-label="Proximo mes">
+        <button type="button" className="icon-button" onClick={goToNextMonth} aria-label="Próximo mês">
           <ChevronRight size={20} />
         </button>
       </section>
 
-      {sheetState.loading && <LoadingInline text="Carregando mes..." />}
+      {sheetState.loading && <LoadingInline text="Carregando mês..." />}
       {sheetState.copyingStructure && <LoadingInline text="Copiando estrutura..." />}
       {sheetState.error && <ErrorInline text={sheetState.error.message} />}
 
       {rows.length === 0 && !sheetState.loading && (
         <section className="empty-month-card">
           <div>
-            <strong>{getPeriodLabel(selectedPeriod)} esta vazio.</strong>
+            <strong>{getPeriodLabel(selectedPeriod)} está vazio.</strong>
             <p>Copie a estrutura de {getPeriodLabel(previousPeriod)} com valores zerados ou comece do zero.</p>
           </div>
           <div className="actions">
@@ -210,7 +210,7 @@ export function ConnectedApp() {
             </button>
             <button type="button" className="primary-button" onClick={addMobileRow}>
               <Plus size={16} />
-              Comecar vazio
+              Começar vazio
             </button>
           </div>
         </section>
@@ -225,7 +225,7 @@ export function ConnectedApp() {
       </section>
 
       <section className="settlement-card">
-        <span>Acerto do mes</span>
+        <span>Acerto do mês</span>
         <strong>{getSettlementText(settlement)}</strong>
       </section>
 
@@ -246,7 +246,7 @@ export function ConnectedApp() {
 
         <div className="table desktop-table">
           <div className="table-row table-head">
-            <span>Descricao</span>
+            <span>Descrição</span>
             <span>Valor</span>
             <span>Pago por</span>
             <span></span>
@@ -257,7 +257,7 @@ export function ConnectedApp() {
                 value={row.description}
                 onChange={(event) => sheetState.updateRow(row.id, 'description', event.target.value)}
                 onBlur={(event) => sheetState.saveRow(row.id, 'description', event.target.value.trim())}
-                placeholder="Descricao"
+                placeholder="Descrição"
               />
               <input
                 value={moneyInputValue(row.amount)}
@@ -283,7 +283,7 @@ export function ConnectedApp() {
               <article className={`mobile-row ${isExpanded ? 'is-expanded' : 'is-collapsed'}`} key={row.id}>
                 {!isExpanded && (
                   <button type="button" className="collapsed-row" onClick={() => setExpandedRowId(row.id)}>
-                    <span>{row.description || 'Sem descricao'}</span>
+                    <span>{row.description || 'Sem descrição'}</span>
                     <strong>{formatBRL(parseBRL(row.amount))}</strong>
                     <em>{payer?.displayName || 'Sem pagador'}</em>
                   </button>
@@ -297,7 +297,7 @@ export function ConnectedApp() {
                         value={row.description}
                         onChange={(event) => sheetState.updateRow(row.id, 'description', event.target.value)}
                         onBlur={(event) => sheetState.saveRow(row.id, 'description', event.target.value.trim())}
-                        placeholder="Descricao"
+                        placeholder="Descrição"
                       />
                       <button type="button" className="delete-button" onClick={() => sheetState.removeRow(row.id)} aria-label="Remover linha">
                         <Trash2 size={17} />
@@ -376,7 +376,7 @@ function LoadingScreen({ text, description }) {
     <main className="loading-screen">
       <section className="loading-card">
         <div className="loading-mark" aria-hidden="true" />
-        <p className="eyebrow">Planilha Domestica</p>
+        <p className="eyebrow">Planilha Doméstica</p>
         <h1>{text}</h1>
         <p className="muted">{description}</p>
         <div className="loading-skeleton" aria-hidden="true">
@@ -401,8 +401,8 @@ function ConfigMissingScreen() {
   return (
     <main className="login-shell">
       <section className="login-card">
-        <p className="eyebrow">Configuracao pendente</p>
-        <h1>Supabase nao configurado</h1>
+        <p className="eyebrow">Configuração pendente</p>
+        <h1>Supabase não configurado</h1>
         <p className="muted">Crie o arquivo .env local com VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY.</p>
       </section>
     </main>
@@ -413,9 +413,9 @@ function NoHouseholdScreen() {
   return (
     <main className="login-shell">
       <section className="login-card">
-        <p className="eyebrow">Espaco nao encontrado</p>
-        <h1>Usuario sem casa vinculada</h1>
-        <p className="muted">Crie o household inicial e vincule este usuario em household_members.</p>
+        <p className="eyebrow">Espaço não encontrado</p>
+        <h1>Usuário sem casa vinculada</h1>
+        <p className="muted">Crie o household inicial e vincule este usuário em household_members.</p>
         <button type="button" className="secondary-button" onClick={signOut}>Sair</button>
       </section>
     </main>
@@ -427,7 +427,7 @@ function buildSummaryText(settlement, period, members) {
   const paidLines = members.map((member) => `${member.displayName} pagou: ${formatBRL(settlement.paidByUser[member.id])}`).join('\n');
 
   if (settlement.settlement.amount <= 0) {
-    return `Resumo despesas ${label}\n\nTotal: ${formatBRL(settlement.total)}\nParte de cada um: ${formatBRL(settlement.sharePerPerson)}\n\n${paidLines}\n\nAcerto: ninguem deve nada.`;
+    return `Resumo despesas ${label}\n\nTotal: ${formatBRL(settlement.total)}\nParte de cada um: ${formatBRL(settlement.sharePerPerson)}\n\n${paidLines}\n\nAcerto: ninguém deve nada.`;
   }
 
   return `Resumo despesas ${label}\n\nTotal: ${formatBRL(settlement.total)}\nParte de cada um: ${formatBRL(settlement.sharePerPerson)}\n\n${paidLines}\n\nAcerto:\n${settlement.settlement.fromDisplayName} deve ${formatBRL(settlement.settlement.amount)} para ${settlement.settlement.toDisplayName}.`;
