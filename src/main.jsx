@@ -4,6 +4,7 @@ import { App } from './app/App.jsx';
 import './styles/globals.css';
 import './styles/month.css';
 import './styles/iphone.css';
+import './styles/login.css';
 
 const rootNode = document.getElementById('root');
 const root = createRoot(rootNode);
