@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight, Copy, LogOut, Plus, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Check, Copy, LogOut, Plus, Trash2 } from 'lucide-react';
 import { LoginPage } from '../features/auth/LoginPage.jsx';
 import { useAuth } from '../features/auth/useAuth.js';
 import { signOut } from '../features/auth/authService.js';
@@ -126,8 +126,9 @@ export function ConnectedApp() {
     navigator.clipboard?.writeText(text);
   }
 
-  async function saveAndCollapse(rowId, field, value) {
-    await sheetState.saveRow(rowId, field, value);
+  async function finishRow(row) {
+    await sheetState.saveRow(row.id, 'description', String(row.description || '').trim());
+    await sheetState.saveRow(row.id, 'amount', parseBRL(row.amount));
     setExpandedRowId(null);
   }
 
@@ -268,7 +269,7 @@ export function ConnectedApp() {
                         className="description-input"
                         value={row.description}
                         onChange={(event) => sheetState.updateRow(row.id, 'description', event.target.value)}
-                        onBlur={(event) => saveAndCollapse(row.id, 'description', event.target.value.trim())}
+                        onBlur={(event) => sheetState.saveRow(row.id, 'description', event.target.value.trim())}
                         placeholder="Descricao"
                       />
                       <button type="button" className="delete-button" onClick={() => sheetState.removeRow(row.id)} aria-label="Remover linha">
@@ -283,7 +284,7 @@ export function ConnectedApp() {
                           value={moneyInputValue(row.amount)}
                           inputMode="decimal"
                           onChange={(event) => sheetState.updateRow(row.id, 'amount', event.target.value)}
-                          onBlur={(event) => saveAndCollapse(row.id, 'amount', parseBRL(event.target.value))}
+                          onBlur={(event) => sheetState.saveRow(row.id, 'amount', parseBRL(event.target.value))}
                           placeholder="0,00"
                         />
                       </label>
@@ -300,6 +301,11 @@ export function ConnectedApp() {
                           </button>
                         ))}
                       </div>
+
+                      <button type="button" className="primary-button finish-row-button" onClick={() => finishRow(row)}>
+                        <Check size={16} />
+                        Concluir
+                      </button>
                     </div>
                   </>
                 )}
