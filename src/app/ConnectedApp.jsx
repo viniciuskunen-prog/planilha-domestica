@@ -43,6 +43,11 @@ function shiftPeriod(period, offset) {
   };
 }
 
+function moneyInputValue(value) {
+  if (!value) return '';
+  return String(value).replace('.', ',');
+}
+
 export function ConnectedApp() {
   const auth = useAuth();
   const [selectedPeriod, setSelectedPeriod] = useState(getInitialPeriod);
@@ -183,9 +188,20 @@ export function ConnectedApp() {
           </div>
           {rows.map((row) => (
             <div className="table-row" key={row.id}>
-              <input value={row.description} onChange={(event) => sheetState.updateRow(row.id, 'description', event.target.value)} placeholder="Descricao" />
-              <input value={row.amount ? String(row.amount).replace('.', ',') : ''} inputMode="decimal" onChange={(event) => sheetState.updateRow(row.id, 'amount', parseBRL(event.target.value))} placeholder="0,00" />
-              <select value={row.paidByUserId || fallbackPaidByUserId || ''} onChange={(event) => sheetState.updateRow(row.id, 'paidByUserId', event.target.value)}>
+              <input
+                value={row.description}
+                onChange={(event) => sheetState.updateRow(row.id, 'description', event.target.value)}
+                onBlur={(event) => sheetState.saveRow(row.id, 'description', event.target.value.trim())}
+                placeholder="Descricao"
+              />
+              <input
+                value={moneyInputValue(row.amount)}
+                inputMode="decimal"
+                onChange={(event) => sheetState.updateRow(row.id, 'amount', event.target.value)}
+                onBlur={(event) => sheetState.saveRow(row.id, 'amount', parseBRL(event.target.value))}
+                placeholder="0,00"
+              />
+              <select value={row.paidByUserId || fallbackPaidByUserId || ''} onChange={(event) => sheetState.updateAndSaveRow(row.id, 'paidByUserId', event.target.value)}>
                 {members.map((member) => <option key={member.id} value={member.id}>{member.displayName}</option>)}
               </select>
               <button type="button" className="ghost-button" onClick={() => sheetState.removeRow(row.id)}>Remover</button>
@@ -197,7 +213,13 @@ export function ConnectedApp() {
           {rows.map((row) => (
             <article className="mobile-row" key={row.id}>
               <div className="mobile-row-top">
-                <input className="description-input" value={row.description} onChange={(event) => sheetState.updateRow(row.id, 'description', event.target.value)} placeholder="Descricao" />
+                <input
+                  className="description-input"
+                  value={row.description}
+                  onChange={(event) => sheetState.updateRow(row.id, 'description', event.target.value)}
+                  onBlur={(event) => sheetState.saveRow(row.id, 'description', event.target.value.trim())}
+                  placeholder="Descricao"
+                />
                 <button type="button" className="delete-button" onClick={() => sheetState.removeRow(row.id)} aria-label="Remover linha">
                   <Trash2 size={17} />
                 </button>
@@ -206,7 +228,13 @@ export function ConnectedApp() {
               <div className="mobile-row-grid">
                 <label>
                   <span>Valor</span>
-                  <input value={row.amount ? String(row.amount).replace('.', ',') : ''} inputMode="decimal" onChange={(event) => sheetState.updateRow(row.id, 'amount', parseBRL(event.target.value))} placeholder="0,00" />
+                  <input
+                    value={moneyInputValue(row.amount)}
+                    inputMode="decimal"
+                    onChange={(event) => sheetState.updateRow(row.id, 'amount', event.target.value)}
+                    onBlur={(event) => sheetState.saveRow(row.id, 'amount', parseBRL(event.target.value))}
+                    placeholder="0,00"
+                  />
                 </label>
 
                 <div className="payer-toggle" aria-label="Pago por">
@@ -215,7 +243,7 @@ export function ConnectedApp() {
                       key={member.id}
                       type="button"
                       className={row.paidByUserId === member.id ? 'active' : ''}
-                      onClick={() => sheetState.updateRow(row.id, 'paidByUserId', member.id)}
+                      onClick={() => sheetState.updateAndSaveRow(row.id, 'paidByUserId', member.id)}
                     >
                       {member.displayName}
                     </button>
