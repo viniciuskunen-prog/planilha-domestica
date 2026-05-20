@@ -131,8 +131,11 @@ export function ConnectedApp() {
     setExpandedRowId(null);
   }
 
-  function addMobileRow() {
-    sheetState.addRow();
+  async function addMobileRow() {
+    const newRow = await sheetState.addRow();
+    if (newRow?.id) {
+      setExpandedRowId(newRow.id);
+    }
   }
 
   return (
@@ -173,7 +176,7 @@ export function ConnectedApp() {
             <button type="button" className="secondary-button" onClick={sheetState.copyPreviousStructure} disabled={!canCopyPreviousStructure}>
               Copiar {getPeriodLabel(previousPeriod)}
             </button>
-            <button type="button" className="primary-button" onClick={sheetState.addRow}>
+            <button type="button" className="primary-button" onClick={addMobileRow}>
               <Plus size={16} />
               Comecar vazio
             </button>
@@ -245,7 +248,7 @@ export function ConnectedApp() {
 
         <div className="mobile-list">
           {rows.map((row) => {
-            const isExpanded = expandedRowId === row.id || !row.description;
+            const isExpanded = expandedRowId === row.id;
             const payer = members.find((member) => member.id === row.paidByUserId);
 
             return (
