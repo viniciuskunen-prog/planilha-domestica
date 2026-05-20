@@ -69,7 +69,7 @@ export function ConnectedApp() {
   const settlement = useMemo(() => calculateSettlement(rows, members), [rows, members]);
 
   if (auth.loading) {
-    return <LoadingScreen text="Carregando sessao..." />;
+    return <LoadingScreen text="Carregando sessao" description="Validando seu acesso e preparando o app." />;
   }
 
   if (!auth.isConfigured) {
@@ -81,7 +81,7 @@ export function ConnectedApp() {
   }
 
   if (householdState.loading) {
-    return <LoadingScreen text="Carregando espaco compartilhado..." />;
+    return <LoadingScreen text="Carregando casa" description="Buscando o espaco compartilhado e os membros." />;
   }
 
   if (!householdState.household) {
@@ -271,12 +271,19 @@ function SummaryCard({ label, value }) {
   );
 }
 
-function LoadingScreen({ text }) {
+function LoadingScreen({ text, description }) {
   return (
-    <main className="login-shell">
-      <section className="login-card">
+    <main className="loading-screen">
+      <section className="loading-card">
+        <div className="loading-mark" aria-hidden="true" />
         <p className="eyebrow">Planilha Domestica</p>
         <h1>{text}</h1>
+        <p className="muted">{description}</p>
+        <div className="loading-skeleton" aria-hidden="true">
+          <span className="loading-line medium" />
+          <span className="loading-line" />
+          <span className="loading-line short" />
+        </div>
       </section>
     </main>
   );
