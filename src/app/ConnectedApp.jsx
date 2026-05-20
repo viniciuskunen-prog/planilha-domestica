@@ -1,0 +1,293 @@
+import { useMemo, useState } from 'react';
+import { ChevronLeft, ChevronRight, Copy, LogOut, Plus, Trash2 } from 'lucide-react';
+import { LoginPage } from '../features/auth/LoginPage.jsx';
+import { useAuth } from '../features/auth/useAuth.js';
+import { signOut } from '../features/auth/authService.js';
+import { useHousehold } from '../features/household/useHousehold.js';
+import { useMonthlySheet } from '../features/sheets/useMonthlySheet.js';
+import { calculateSettlement } from '../features/settlement/settlement.js';
+import { formatBRL, parseBRL } from '../lib/money.js';
+
+const monthNames = [
+  'Janeiro',
+  'Fevereiro',
+  'Marco',
+  'Abril',
+  'Maio',
+  'Junho',
+  'Julho',
+  'Agosto',
+  'Setembro',
+  'Outubro',
+  'Novembro',
+  'Dezembro'
+];
+
+function getInitialPeriod() {
+  const now = new Date();
+  return {
+    year: now.getFullYear(),
+    month: now.getMonth() + 1
+  };
+}
+
+function getPeriodLabel(period) {
+  return `${monthNames[period.month - 1]}/${period.year}`;
+}
+
+function shiftPeriod(period, offset) {
+  const date = new Date(period.year, period.month - 1 + offset, 1);
+  return {
+    year: date.getFullYear(),
+    month: date.getMonth() + 1
+  };
+}
+
+export function ConnectedApp() {
+  const auth = useAuth();
+  const [selectedPeriod, setSelectedPeriod] = useState(getInitialPeriod);
+
+  const householdState = useHousehold(auth.user);
+  const fallbackPaidByUserId = householdState.members[0]?.id || auth.user?.id || null;
+
+  const sheetState = useMonthlySheet({
+    household: householdState.household,
+    period: selectedPeriod,
+    user: auth.user,
+    fallbackPaidByUserId
+  });
+
+  const rows = sheetState.rows || [];
+  const members = householdState.members || [];
+  const settlement = useMemo(() => calculateSettlement(rows, members), [rows, members]);
+
+  if (auth.loading) {
+    return <LoadingScreen text="Carregando sessao..." />;
+  }
+
+  if (!auth.isConfigured) {
+    return <ConfigMissingScreen />;
+  }
+
+  if (!auth.user) {
+    return <LoginPage />;
+  }
+
+  if (householdState.loading) {
+    return <LoadingScreen text="Carregando espaco compartilhado..." />;
+  }
+
+  if (!householdState.household) {
+    return <NoHouseholdScreen />;
+  }
+
+  function goToPreviousMonth() {
+    setSelectedPeriod((current) => shiftPeriod(current, -1));
+  }
+
+  function goToNextMonth() {
+    setSelectedPeriod((current) => shiftPeriod(current, 1));
+  }
+
+  function copySummary() {
+    const text = buildSummaryText(settlement, selectedPeriod, members);
+    navigator.clipboard?.writeText(text);
+  }
+
+  return (
+    <main className="app-shell">
+      <header className="hero app-hero-with-action">
+        <div>
+          <p className="eyebrow">{householdState.household.name}</p>
+          <h1>{getPeriodLabel(selectedPeriod)}</h1>
+          <p className="muted">Despesas compartilhadas com acerto automatico.</p>
+        </div>
+        <button type="button" className="secondary-button signout-button" onClick={signOut}>
+          <LogOut size={16} />
+          Sair
+        </button>
+      </header>
+
+      <section className="month-card" aria-label="Seletor de mes">
+        <button type="button" className="icon-button" onClick={goToPreviousMonth} aria-label="Mes anterior">
+          <ChevronLeft size={20} />
+        </button>
+        <strong>{getPeriodLabel(selectedPeriod)}</strong>
+        <button type="button" className="icon-button" onClick={goToNextMonth} aria-label="Proximo mes">
+          <ChevronRight size={20} />
+        </button>
+      </section>
+
+      {sheetState.loading && <LoadingInline text="Carregando mes..." />}
+      {sheetState.error && <ErrorInline text={sheetState.error.message} />}
+
+      {rows.length === 0 && !sheetState.loading && (
+        <section className="empty-month-card">
+          <div>
+            <strong>{getPeriodLabel(selectedPeriod)} esta vazio.</strong>
+            <p>Comece com uma linha nova. A copia do mes anterior entra no proximo ajuste conectado.</p>
+          </div>
+          <div className="actions">
+            <button type="button" className="primary-button" onClick={sheetState.addRow}>
+              <Plus size={16} />
+              Comecar vazio
+            </button>
+          </div>
+        </section>
+      )}
+
+      <section className="summary-grid compact-summary">
+        <SummaryCard label="Total" value={formatBRL(settlement.total)} />
+        <SummaryCard label="Metade" value={formatBRL(settlement.sharePerPerson)} />
+        {members.map((member) => (
+          <SummaryCard key={member.id} label={member.displayName} value={formatBRL(settlement.paidByUser[member.id])} />
+        ))}
+      </section>
+
+      <section className="settlement-card">
+        <span>Acerto do mes</span>
+        <strong>
+          {settlement.settlement.amount > 0
+            ? `${settlement.settlement.fromDisplayName} transfere ${formatBRL(settlement.settlement.amount)} para ${settlement.settlement.toDisplayName}`
+            : 'Ninguem deve nada'}
+        </strong>
+      </section>
+
+      <section className="sheet-card">
+        <div className="sheet-header">
+          <h2>Rateio</h2>
+          <div className="actions sheet-actions">
+            <button type="button" className="secondary-button" onClick={copySummary}>
+              <Copy size={16} />
+              Copiar
+            </button>
+            <button type="button" className="primary-button desktop-add-button" onClick={sheetState.addRow}>
+              <Plus size={16} />
+              Nova linha
+            </button>
+          </div>
+        </div>
+
+        <div className="table desktop-table">
+          <div className="table-row table-head">
+            <span>Descricao</span>
+            <span>Valor</span>
+            <span>Pago por</span>
+            <span></span>
+          </div>
+          {rows.map((row) => (
+            <div className="table-row" key={row.id}>
+              <input value={row.description} onChange={(event) => sheetState.updateRow(row.id, 'description', event.target.value)} placeholder="Descricao" />
+              <input value={row.amount ? String(row.amount).replace('.', ',') : ''} inputMode="decimal" onChange={(event) => sheetState.updateRow(row.id, 'amount', parseBRL(event.target.value))} placeholder="0,00" />
+              <select value={row.paidByUserId || fallbackPaidByUserId || ''} onChange={(event) => sheetState.updateRow(row.id, 'paidByUserId', event.target.value)}>
+                {members.map((member) => <option key={member.id} value={member.id}>{member.displayName}</option>)}
+              </select>
+              <button type="button" className="ghost-button" onClick={() => sheetState.removeRow(row.id)}>Remover</button>
+            </div>
+          ))}
+        </div>
+
+        <div className="mobile-list">
+          {rows.map((row) => (
+            <article className="mobile-row" key={row.id}>
+              <div className="mobile-row-top">
+                <input className="description-input" value={row.description} onChange={(event) => sheetState.updateRow(row.id, 'description', event.target.value)} placeholder="Descricao" />
+                <button type="button" className="delete-button" onClick={() => sheetState.removeRow(row.id)} aria-label="Remover linha">
+                  <Trash2 size={17} />
+                </button>
+              </div>
+
+              <div className="mobile-row-grid">
+                <label>
+                  <span>Valor</span>
+                  <input value={row.amount ? String(row.amount).replace('.', ',') : ''} inputMode="decimal" onChange={(event) => sheetState.updateRow(row.id, 'amount', parseBRL(event.target.value))} placeholder="0,00" />
+                </label>
+
+                <div className="payer-toggle" aria-label="Pago por">
+                  {members.map((member) => (
+                    <button
+                      key={member.id}
+                      type="button"
+                      className={row.paidByUserId === member.id ? 'active' : ''}
+                      onClick={() => sheetState.updateRow(row.id, 'paidByUserId', member.id)}
+                    >
+                      {member.displayName}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <button type="button" className="mobile-fab" onClick={sheetState.addRow} aria-label="Adicionar nova linha">
+        <Plus size={22} />
+      </button>
+    </main>
+  );
+}
+
+function SummaryCard({ label, value }) {
+  return (
+    <article className="summary-card">
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </article>
+  );
+}
+
+function LoadingScreen({ text }) {
+  return (
+    <main className="login-shell">
+      <section className="login-card">
+        <p className="eyebrow">Planilha Domestica</p>
+        <h1>{text}</h1>
+      </section>
+    </main>
+  );
+}
+
+function LoadingInline({ text }) {
+  return <p className="inline-status">{text}</p>;
+}
+
+function ErrorInline({ text }) {
+  return <p className="inline-status error">{text}</p>;
+}
+
+function ConfigMissingScreen() {
+  return (
+    <main className="login-shell">
+      <section className="login-card">
+        <p className="eyebrow">Configuracao pendente</p>
+        <h1>Supabase nao configurado</h1>
+        <p className="muted">Crie o arquivo .env local com VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY.</p>
+      </section>
+    </main>
+  );
+}
+
+function NoHouseholdScreen() {
+  return (
+    <main className="login-shell">
+      <section className="login-card">
+        <p className="eyebrow">Espaco nao encontrado</p>
+        <h1>Usuario sem casa vinculada</h1>
+        <p className="muted">Crie o household inicial e vincule este usuario em household_members.</p>
+        <button type="button" className="secondary-button" onClick={signOut}>Sair</button>
+      </section>
+    </main>
+  );
+}
+
+function buildSummaryText(settlement, period, members) {
+  const label = getPeriodLabel(period);
+  const paidLines = members.map((member) => `${member.displayName} pagou: ${formatBRL(settlement.paidByUser[member.id])}`).join('\n');
+
+  if (settlement.settlement.amount <= 0) {
+    return `Resumo despesas ${label}\n\nTotal: ${formatBRL(settlement.total)}\nParte de cada um: ${formatBRL(settlement.sharePerPerson)}\n\n${paidLines}\n\nAcerto: ninguem deve nada.`;
+  }
+
+  return `Resumo despesas ${label}\n\nTotal: ${formatBRL(settlement.total)}\nParte de cada um: ${formatBRL(settlement.sharePerPerson)}\n\n${paidLines}\n\nAcerto:\n${settlement.settlement.fromDisplayName} transfere ${formatBRL(settlement.settlement.amount)} para ${settlement.settlement.toDisplayName}.`;
+}
