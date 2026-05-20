@@ -60,7 +60,7 @@ export function useMonthlySheet({ household, period, user, fallbackPaidByUserId 
   }, [household, period]);
 
   async function addRow() {
-    if (!sheet || !user) return;
+    if (!sheet || !user) return null;
 
     const tempRow = {
       id: `temp-${crypto.randomUUID()}`,
@@ -84,10 +84,11 @@ export function useMonthlySheet({ household, period, user, fallbackPaidByUserId 
     if (result.error) {
       setError(result.error);
       setRows((current) => current.filter((row) => row.id !== tempRow.id));
-      return;
+      return null;
     }
 
     setRows((current) => current.map((row) => row.id === tempRow.id ? result.row : row));
+    return result.row;
   }
 
   function updateRow(rowId, field, value) {
