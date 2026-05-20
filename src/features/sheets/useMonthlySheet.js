@@ -90,23 +90,28 @@ export function useMonthlySheet({ household, period, user, fallbackPaidByUserId 
     setRows((current) => current.map((row) => row.id === tempRow.id ? result.row : row));
   }
 
-  async function updateRow(rowId, field, value) {
-    const previousRowsSnapshot = rows;
+  function updateRow(rowId, field, value) {
     const patch = { [field]: value };
-
     setRows((current) => current.map((row) => row.id === rowId ? { ...row, ...patch } : row));
+  }
 
+  async function saveRow(rowId, field, value) {
     if (String(rowId).startsWith('temp-') || !user) return;
 
+    const patch = { [field]: value };
     const result = await updateRowOnServer(rowId, patch, user.id);
 
     if (result.error) {
       setError(result.error);
-      setRows(previousRowsSnapshot);
       return;
     }
 
     setRows((current) => current.map((row) => row.id === rowId ? result.row : row));
+  }
+
+  async function updateAndSaveRow(rowId, field, value) {
+    updateRow(rowId, field, value);
+    await saveRow(rowId, field, value);
   }
 
   async function removeRow(rowId) {
@@ -159,6 +164,8 @@ export function useMonthlySheet({ household, period, user, fallbackPaidByUserId 
     error,
     addRow,
     updateRow,
+    saveRow,
+    updateAndSaveRow,
     removeRow,
     copyPreviousStructure
   };
