@@ -1,0 +1,37 @@
+name: Supabase Heartbeat v2
+
+on:
+  schedule:
+    - cron: '17 11,23 * * *'
+  workflow_dispatch:
+
+jobs:
+  heartbeat:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call keep_alive RPC and confirm database write
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          set -euo pipefail
+
+          test -n "$SUPABASE_URL"
+          test -n "$SUPABASE_ANON_KEY"
+
+          response=$(curl --fail-with-body --silent --show-error --request POST \
+            "$SUPABASE_URL/rest/v1/rpc/keep_alive" \
+            --header "apikey: $SUPABASE_ANON_KEY" \
+            --header "Authorization: Bearer $SUPABASE_ANON_KEY" \
+            --header "Content-Type: application/json" \
+            --data '{}')
+
+          echo "$response"
+
+          printf '%s' "$response" | jq -e '
+            .ok == true and
+            (.ping_count | type == "number") and
+            (.ping_count >= 1)
+          ' >/dev/null
+
+          echo "Supabase heartbeat database write confirmed."
