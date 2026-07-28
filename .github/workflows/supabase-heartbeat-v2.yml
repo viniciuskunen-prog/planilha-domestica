@@ -19,14 +19,27 @@ jobs:
           test -n "$SUPABASE_URL"
           test -n "$SUPABASE_ANON_KEY"
 
-          response=$(curl --fail-with-body --silent --show-error --request POST \
+          response_file=$(mktemp)
+          http_code=$(curl --silent --show-error \
+            --output "$response_file" \
+            --write-out '%{http_code}' \
+            --request POST \
             "$SUPABASE_URL/rest/v1/rpc/keep_alive" \
             --header "apikey: $SUPABASE_ANON_KEY" \
             --header "Authorization: Bearer $SUPABASE_ANON_KEY" \
             --header "Content-Type: application/json" \
             --data '{}')
 
+          response=$(cat "$response_file")
+          rm -f "$response_file"
+
+          echo "HTTP status: $http_code"
           echo "$response"
+
+          if [ "$http_code" -lt 200 ] || [ "$http_code" -ge 300 ]; then
+            echo "Supabase heartbeat RPC returned an HTTP error."
+            exit 1
+          fi
 
           printf '%s' "$response" | jq -e '
             .ok == true and
