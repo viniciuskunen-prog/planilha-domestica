@@ -24,5 +24,11 @@ jobs:
             -H "Content-Type: application/json" \
             --data '{}')
 
-          echo "Supabase heartbeat completed."
           echo "$response"
+
+          if ! printf '%s' "$response" | grep -q '"ping_count"'; then
+            echo "Heartbeat response did not confirm a database write."
+            exit 1
+          fi
+
+          echo "Supabase heartbeat write confirmed."
