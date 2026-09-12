@@ -50,6 +50,19 @@ function latestIso(values: Array<string | null | undefined>) {
   return valid.sort().at(-1) || null;
 }
 
+function supabaseAdminKey() {
+  const secretKeysJson = Deno.env.get("SUPABASE_SECRET_KEYS");
+  if (secretKeysJson) {
+    try {
+      const secretKeys = JSON.parse(secretKeysJson) as Record<string, string>;
+      if (secretKeys.default) return secretKeys.default;
+    } catch (error) {
+      console.error("Invalid SUPABASE_SECRET_KEYS JSON", error);
+    }
+  }
+  return Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || null;
+}
+
 async function authorizeGoogleCaller(req: Request) {
   const authorization = req.headers.get("authorization") || "";
   if (!authorization.startsWith("Bearer ")) return false;
@@ -77,8 +90,8 @@ Deno.serve(async (req: Request) => {
     if (!(await authorizeGoogleCaller(req))) return json({ ok: false, error: "unauthorized" }, 401);
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const serviceRole = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    if (!supabaseUrl || !serviceRole) {
+    const adminKey = supabaseAdminKey();
+    if (!supabaseUrl || !adminKey) {
       console.error("Missing Supabase server credentials");
       return json({ ok: false, error: "server_configuration_error" }, 500);
     }
@@ -89,7 +102,7 @@ Deno.serve(async (req: Request) => {
       ? Math.min(MAX_MONTHS, Math.max(1, Math.trunc(requestedMonths)))
       : DEFAULT_MONTHS;
 
-    const supabase = createClient(supabaseUrl, serviceRole, {
+    const supabase = createClient(supabaseUrl, adminKey, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
 
