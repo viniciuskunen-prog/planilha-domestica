@@ -1,0 +1,2 @@
+[functions.dashboard-domestic-sync]
+verify_jwt = false
