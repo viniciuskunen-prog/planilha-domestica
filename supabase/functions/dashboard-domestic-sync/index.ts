@@ -2,12 +2,9 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.116.0";
 import { createRemoteJWKSet, jwtVerify } from "npm:jose@6.2.12";
 
-const HOUSEHOLD_ID = "32d5d5ff-2cf8-4709-8a1a-fda75a4a2a04";
-const VINI_ID = "d8ac6a90-e593-4a44-9b6c-a0979ce7ca4d";
-const ELIANE_ID = "f7aa7607-e2be-45ef-893a-d8f358b62a2e";
-const ALLOWED_GOOGLE_EMAILS = new Set([
-  "falecom@ovinikunen.com.br",
-  "vinicius.kunen@gmail.com",
+const ALLOWED_GOOGLE_EMAIL_HASHES = new Set([
+  "b6d9a8de045a8672d01c99795d8aecd71e72abbdfd6d002455349d4be25959b6",
+  "88671865347f5804fe4b19de7437409c85999c1958c46f21aff18ea02c393807",
 ]);
 const TIMEZONE = "America/Sao_Paulo";
 const DEFAULT_MONTHS = 4;
@@ -50,6 +47,14 @@ function latestIso(values: Array<string | null | undefined>) {
   return valid.sort().at(-1) || null;
 }
 
+async function sha256Hex(value: string) {
+  const bytes = new TextEncoder().encode(value);
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(digest))
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+}
+
 function supabaseAdminKey() {
   const secretKeysJson = Deno.env.get("SUPABASE_SECRET_KEYS");
   if (secretKeysJson) {
@@ -73,11 +78,11 @@ async function authorizeGoogleCaller(req: Request) {
     const { payload } = await jwtVerify(token, GOOGLE_JWKS, {
       issuer: ["https://accounts.google.com", "accounts.google.com"],
     });
-    const email = String(payload.email || "").toLowerCase();
-    return ALLOWED_GOOGLE_EMAILS.has(email) &&
-      payload.email_verified === true &&
-      typeof payload.aud === "string" &&
-      payload.aud.length > 0;
+    const email = String(payload.email || "").trim().toLowerCase();
+    if (!email || payload.email_verified !== true || typeof payload.aud !== "string" || !payload.aud) {
+      return false;
+    }
+    return ALLOWED_GOOGLE_EMAIL_HASHES.has(await sha256Hex(email));
   } catch (error) {
     console.warn("Google OIDC validation failed", error);
     return false;
@@ -106,19 +111,38 @@ Deno.serve(async (req: Request) => {
       auth: { persistSession: false, autoRefreshToken: false },
     });
 
+    const { data: households, error: householdsError } = await supabase
+      .from("households")
+      .select("id")
+      .limit(2);
+    if (householdsError) throw householdsError;
+    if (!households || households.length !== 1) {
+      console.error("Expected exactly one household", { count: households?.length || 0 });
+      return json({ ok: false, error: "household_topology_drift" }, 409);
+    }
+    const householdId = households[0].id;
+
     const { data: members, error: membersError } = await supabase
       .from("household_members")
       .select("user_id, role")
-      .eq("household_id", HOUSEHOLD_ID)
+      .eq("household_id", householdId)
       .order("created_at", { ascending: true });
     if (membersError) throw membersError;
 
-    const memberIds = (members || []).map((member) => member.user_id);
-    if (memberIds.length !== 2 || !memberIds.includes(VINI_ID) || !memberIds.includes(ELIANE_ID)) {
-      console.error("Household membership drift detected", { memberIds });
+    const owner = (members || []).filter((member) => member.role === "owner");
+    const regular = (members || []).filter((member) => member.role === "member");
+    if ((members || []).length !== 2 || owner.length !== 1 || regular.length !== 1) {
+      console.error("Household membership drift detected", {
+        total: members?.length || 0,
+        owners: owner.length,
+        regularMembers: regular.length,
+      });
       return json({ ok: false, error: "household_membership_drift" }, 409);
     }
 
+    const viniId = owner[0].user_id;
+    const elianeId = regular[0].user_id;
+    const memberIds = [viniId, elianeId];
     const now = currentPeriod();
     const minIndex = periodIndex(now.year, now.month) - (months - 1);
     const maxIndex = periodIndex(now.year, now.month);
@@ -126,7 +150,7 @@ Deno.serve(async (req: Request) => {
     const { data: sheets, error: sheetsError } = await supabase
       .from("monthly_sheets")
       .select("id, year, month, updated_at")
-      .eq("household_id", HOUSEHOLD_ID)
+      .eq("household_id", householdId)
       .order("year", { ascending: true })
       .order("month", { ascending: true });
     if (sheetsError) throw sheetsError;
@@ -164,7 +188,7 @@ Deno.serve(async (req: Request) => {
       const expenses = rowsBySheet.get(sheet.id) || [];
       const total = expenses.reduce((sum, row) => sum + (Number(row.amount) || 0), 0);
       const sharePerPerson = total / memberIds.length;
-      const paidByUser: Record<string, number> = { [VINI_ID]: 0, [ELIANE_ID]: 0 };
+      const paidByUser: Record<string, number> = { [viniId]: 0, [elianeId]: 0 };
 
       for (const row of expenses) {
         if (!row.paid_by_user_id) continue;
@@ -188,12 +212,12 @@ Deno.serve(async (req: Request) => {
         month: `${String(sheet.year).padStart(4, "0")}-${String(sheet.month).padStart(2, "0")}`,
         totalShared: roundMoney(total),
         sharePerPerson: roundMoney(sharePerPerson),
-        paidVini: roundMoney(paidByUser[VINI_ID] || 0),
-        paidEliane: roundMoney(paidByUser[ELIANE_ID] || 0),
-        settlementViniToEliane: hasSettlement && debtor.userId === VINI_ID && creditor.userId === ELIANE_ID
+        paidVini: roundMoney(paidByUser[viniId] || 0),
+        paidEliane: roundMoney(paidByUser[elianeId] || 0),
+        settlementViniToEliane: hasSettlement && debtor.userId === viniId && creditor.userId === elianeId
           ? roundMoney(amount)
           : 0,
-        settlementElianeToVini: hasSettlement && debtor.userId === ELIANE_ID && creditor.userId === VINI_ID
+        settlementElianeToVini: hasSettlement && debtor.userId === elianeId && creditor.userId === viniId
           ? roundMoney(amount)
           : 0,
         expenseCount: expenses.length,
